@@ -1,0 +1,17 @@
+# JMeter results
+results/
+reports/
+*.jtl
+*.jtl.gz
+*.log
+
+# Secrets
+.env
+*.token
+*.secret
+*.key
+
+# IDE / OS
+.vscode/
+.idea/
+Thumbs.db
