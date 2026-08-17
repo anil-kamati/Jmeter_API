@@ -2,10 +2,26 @@ pipeline {
     agent any
 
     parameters {
-        string(name: 'USERS', defaultValue: '10', description: 'Number of JMeter users')
-        string(name: 'RAMPUP', defaultValue: '10', description: 'Ramp-up time in seconds')
-        string(name: 'DURATION', defaultValue: '60', description: 'Test duration in seconds')
-        string(name: 'SCRIPT', defaultValue: 'DummyAPI.jmx', description: 'JMeter script')
+        string(
+            name: 'USERS',
+            description: 'Number of JMeter users'
+        )
+
+        string(
+            name: 'RAMPUP',
+            description: 'Ramp-up time in seconds'
+        )
+
+        string(
+            name: 'DURATION',
+            description: 'Test duration in seconds'
+        )
+
+        string(
+            name: 'SCRIPT',
+            defaultValue: 'DummyAPI.jmx',
+            description: 'JMeter script'
+        )
     }
 
     stages {
@@ -13,6 +29,11 @@ pipeline {
         stage('Initialize') {
             steps {
                 checkout scm
+
+                echo "Users    : ${params.USERS}"
+                echo "Ramp-up  : ${params.RAMPUP}"
+                echo "Duration : ${params.DURATION}"
+                echo "Script   : ${params.SCRIPT}"
             }
         }
 
@@ -20,32 +41,38 @@ pipeline {
             steps {
 
                 script {
-                    env.RESULT_FILE = "Result/${params.SCRIPT.replace('.jmx', '')}_Build_${env.BUILD_NUMBER}.jtl"
-                    env.REPORT_DIR = "Result/html_${env.BUILD_NUMBER}"
+                    env.RESULT_FILE =
+                        "Result/${params.SCRIPT.replace('.jmx', '')}_Build_${env.BUILD_NUMBER}.jtl"
+
+                    env.REPORT_DIR =
+                        "Result/html_${env.BUILD_NUMBER}"
                 }
 
                 echo "Result file : ${env.RESULT_FILE}"
                 echo "Report dir  : ${env.REPORT_DIR}"
 
-                bat '''
-                    if not exist Result mkdir Result
+                bat """
+                    if not exist "%WORKSPACE%\\Result" mkdir "%WORKSPACE%\\Result"
 
                     "C:\\apache-jmeter-5.6.3\\apache-jmeter-5.6.3\\bin\\jmeter.bat" ^
                     -n ^
-                    -t "%WORKSPACE%\\%SCRIPT%" ^
+                    -t "%WORKSPACE%\\scripts\\%SCRIPT%" ^
+                    -q "%WORKSPACE%\\properties\\first.properties" ^
                     -Jusers=%USERS% ^
                     -Jrampup=%RAMPUP% ^
                     -Jduration=%DURATION% ^
-                    -l "%WORKSPACE%\\%RESULT_FILE%" ^
+                    -l "%WORKSPACE%\\${env.RESULT_FILE}" ^
                     -e ^
-                    -o "%WORKSPACE%\\%REPORT_DIR%"
-                '''
+                    -o "%WORKSPACE%\\${env.REPORT_DIR}"
+                """
             }
         }
 
         stage('Report') {
             steps {
+
                 script {
+
                     perfReport(
                         sourceDataFiles: env.RESULT_FILE,
                         errorFailedThreshold: 1,
@@ -71,7 +98,10 @@ pipeline {
 
     post {
         always {
-            archiveArtifacts artifacts: 'Result/**/*', allowEmptyArchive: true
+            archiveArtifacts(
+                artifacts: 'Result/**/*',
+                allowEmptyArchive: true
+            )
         }
     }
 }
