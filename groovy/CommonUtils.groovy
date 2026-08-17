@@ -1,66 +1,41 @@
 pipeline {
     agent any
 
-    parameters {
-        string(
-            name: 'USERS',
-            description: 'Number of JMeter users'
-        )
-
-        string(
-            name: 'RAMPUP',
-            description: 'Ramp-up time in seconds'
-        )
-
-        string(
-            name: 'DURATION',
-            description: 'Test duration in seconds'
-        )
-
-        string(
-            name: 'SCRIPT',
-            defaultValue: 'DummyAPI.jmx',
-            description: 'JMeter script'
-        )
-    }
-
     stages {
 
         stage('Initialize') {
             steps {
                 checkout scm
 
-                echo "Users    : ${params.USERS}"
-                echo "Ramp-up  : ${params.RAMPUP}"
-                echo "Duration : ${params.DURATION}"
-                echo "Script   : ${params.SCRIPT}"
+                echo "Branch       : ${Branch}"
+                echo "Users        : ${users}"
+                echo "Duration     : ${duration}"
+                echo "Property File: ${propertyFile}"
             }
         }
 
         stage('Execution') {
             steps {
-
                 script {
                     env.RESULT_FILE =
-                        "Result/${params.SCRIPT.replace('.jmx', '')}_Build_${env.BUILD_NUMBER}.jtl"
+                        "Result/DummyAPI_Build_${BUILD_NUMBER}.jtl"
 
                     env.REPORT_DIR =
-                        "Result/html_${env.BUILD_NUMBER}"
+                        "Result/html_${BUILD_NUMBER}"
                 }
-
-                echo "Result file : ${env.RESULT_FILE}"
-                echo "Report dir  : ${env.REPORT_DIR}"
 
                 bat """
                     if not exist "%WORKSPACE%\\Result" mkdir "%WORKSPACE%\\Result"
 
+                    set "JAVA_HOME=C:\\Program Files\\Java\\jdk-21"
+                    set "PATH=%%JAVA_HOME%%\\bin;%%PATH%%"
+
                     "C:\\apache-jmeter-5.6.3\\apache-jmeter-5.6.3\\bin\\jmeter.bat" ^
                     -n ^
-                    -t "%WORKSPACE%\\scripts\\%SCRIPT%" ^
-                    -q "%WORKSPACE%\\properties\\first.properties" ^
-                    -Jusers=%USERS% ^
-                    -Jrampup=%RAMPUP% ^
-                    -Jduration=%DURATION% ^
+                    -q "%WORKSPACE%\\properties\\%propertyFile%" ^
+                    -Jusers=%users% ^
+                    -Jduration=%duration% ^
+                    -t "%WORKSPACE%\\scripts\\DummyAPI.jmx" ^
                     -l "%WORKSPACE%\\${env.RESULT_FILE}" ^
                     -e ^
                     -o "%WORKSPACE%\\${env.REPORT_DIR}"
@@ -68,11 +43,9 @@ pipeline {
             }
         }
 
-        stage('Report') {
+        stage('Results') {
             steps {
-
                 script {
-
                     perfReport(
                         sourceDataFiles: env.RESULT_FILE,
                         errorFailedThreshold: 1,
